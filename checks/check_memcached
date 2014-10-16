@@ -11,7 +11,7 @@ EXPIRE="2"
 function printHelpAndExit {
         echo "usage: ./`basename $0` -H HOSTNAME -p PORT [-k KEY] [-v VALUE] [-t TIMEOUT]"
         echo "example: ./`basename $0` -H 127.0.0.1 -p 11211 -k nagioscheck -v works -t 1"
-	echo "To debug when running from CLI add -d"
+        echo "To debug when running from CLI add -d"
         exit 3
 }
 
@@ -24,10 +24,14 @@ while getopts "hH:p:k:v:t:d" optionName; do
                 k) KEY="$OPTARG";;
                 v) VALUE="$OPTARG";;
                 t) EXPIRE="$OPTARG";;
-		d) DEBUG=true;;
+                d) DEBUG=true;;
                 [?]) printHelpAndExit;;
         esac
 done
+if [ ! -x "`which nc 2>/dev/null`" ];then 
+    echo "nc needs to be installed";
+    exit 3
+fi
 
 BYTES="`printf $VALUE | wc -c`"
 
@@ -37,8 +41,8 @@ GET="get $KEY\r\nquit\r\n"
 
 #Perform test
 STARTTIME=`date +%S.%N`
-SETOUTPUT=`echo -e "$SET" | /bin/netcat -q 2 $HOST $PORT`
-GETOUTPUT=`echo -e "$GET" | /bin/netcat -q 2 $HOST $PORT`
+SETOUTPUT=`echo -e "$SET" | nc -w 2 $HOST $PORT`
+GETOUTPUT=`echo -e "$GET" | nc -w 2 $HOST $PORT`
 STOPTIME=`date +%S.%N`
 GETCHECK=`echo $GETOUTPUT | grep "$VALUE" | wc -l`
 
@@ -50,8 +54,8 @@ ELAPSED=`echo $ELAPSED | cut -c1-6`
 
 #Did both the get and set return expected outputs?
 if [ $GETCHECK == "1" ] && [[ $SETOUTPUT == *STORED* ]]; then
-	RETURN="0"
-	STATUS="OK - GET matched SET"
+        RETURN="0"
+        STATUS="OK - GET matched SET"
 
 elif [ $GETCHECK == "0" ] && [[ $SETOUTPUT == *STORED* ]]; then
         RETURN="1"
@@ -62,22 +66,22 @@ elif [ $GETCHECK == "0" ] && [[ $SETOUTPUT != *STORED* ]]; then
         STATUS="CRITICAL - Error on SET"
 
 else
-	RETURN="3"
-	STATUS="UNKNOWN"
+        RETURN="3"
+        STATUS="UNKNOWN"
 fi
 
 #Build output and exit
 OUTPUT="Memcached $STATUS in $ELAPSED seconds | time=$ELAPSED;key=$KEY;value=$VALUE;bytes=$BYTES;expire=$EXPIRE"
 if [ $DEBUG ]; then
-	echo "**Start Time** $STARTTIME"
-	echo "**Set Command** $SET"
-	echo "**Set Output** $SETOUTPUT"
-	echo "**Get Command** $GET"
-	echo "**Get Output** $GETOUTPUT"
-	echo "**Stop Time** $STOPTIME"
-	echo "**GETCHECK** $GETCHECK"
-	echo "**RETURN** $RETURN"
-	echo "**EXISTSTATUS** $STATUS"
+        echo "**Start Time** $STARTTIME"
+        echo "**Set Command** $SET"
+        echo "**Set Output** $SETOUTPUT"
+        echo "**Get Command** $GET"
+        echo "**Get Output** $GETOUTPUT"
+        echo "**Stop Time** $STOPTIME"
+        echo "**GETCHECK** $GETCHECK"
+        echo "**RETURN** $RETURN"
+        echo "**EXISTSTATUS** $STATUS"
 fi
 echo $OUTPUT
 exit $RETURN
